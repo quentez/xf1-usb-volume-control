@@ -32,7 +32,7 @@ brew install python libusb
 .venv/bin/python scripts/build_macos.py
 ```
 
-The script creates `release/xf1-usb-volume-v0.1.0-macos-ARCH.tar.gz` and a
+The script creates `release/xf1-usb-volume-v0.2.0-macos-ARCH.tar.gz` and a
 matching SHA-256 file. It bundles libusb explicitly and runs `doctor` against
 the executable. Frozen builds refuse to use a system/Homebrew fallback, so a
 successful `doctor` verifies the included library can load.
@@ -60,8 +60,8 @@ if adding a signed/notarized release pipeline later.
 3. Commit and push, then create and push a matching tag:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 The release workflow tests both architectures, temporarily downloads official
@@ -83,9 +83,34 @@ instructions are checked by hash and are not stored in the repository.
 
 The patch advertises USB master volume and replaces a 50-byte callback so it
 posts the existing volume event (`0x7f2`) instead of synchronously writing
-amplifier registers. It preserves the original state behavior and uses no new
-RAM allocation. USB range conversion remains unchanged. There are 43 changed
-application bytes versus stock; resources and bootstrap are unchanged.
+amplifier registers. It also synchronizes the USB readback cache with the knob's
+current level and adds a USB Audio 1.0 status endpoint. Notifications use the
+existing unused IN3 context and USB worker queue; playback stays on OUT3.
+It accepts GET_STAT but does not wait for it before later changes, allowing
+hosts that reread controls without that separate acknowledgement. The endpoint
+still waits for completion of the preceding USB packet.
+
+The authored feedback assembly and linker script are in
+[usb-volume-feedback.S](usb-volume-feedback.S) and
+[usb-volume-feedback.ld](usb-volume-feedback.ld). The runtime imports generated
+Python byte constants; users need no compiler, assembler, or extra dependencies.
+To reproduce those constants from source:
+
+```sh
+brew install riscv64-elf-binutils
+python scripts/generate_feedback.py --check
+```
+
+The generator needs no manufacturer firmware. It emits only our code, new
+branch/pointer replacements and expected hashes of the original patch sites.
+The normal patcher additionally checks the complete input and output hashes.
+There are 646 changed application bytes versus stock; resources and bootstrap
+are unchanged. The result is byte-identical to the feedback-v2 image tested on
+the speaker. Earlier local v1 files and manifests are not overwritten.
+
+Interactive tests mock device discovery, preparation, confirmation and sudo;
+they never flash hardware. Release builds also run the executable in a pseudo
+terminal, check that its no-argument menu appears, then quit before discovery.
 
 Keep downloads, extracted images, firmware packages, device serials and logs
 out of commits. The MIT license covers this project's tooling and authored

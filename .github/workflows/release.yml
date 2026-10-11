@@ -53,8 +53,9 @@ jobs:
           tar -xzf release/*.tar.gz -C "$RUNNER_TEMP/extracted"
           binary=$(find "$RUNNER_TEMP/extracted" -type f -name xf1-usb-volume)
           "$binary" doctor
+          python scripts/test_menu.py "$binary"
           "$binary" prepare --input "$RUNNER_TEMP/xf1-firmware/MF1730_20D38E18.fot" --directory "$RUNNER_TEMP/binary-output"
-          "$binary" verify "$RUNNER_TEMP/binary-output/MF1730_20D38E18_usb-volume-v1.fot"
+          "$binary" verify "$RUNNER_TEMP/binary-output/MF1730_20D38E18_usb-volume-v2.fot"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-${{ matrix.arch }}
@@ -88,7 +89,9 @@ jobs:
 
           No Creative firmware is included. The tool downloads and patches only the reviewed official release. Use at your own risk; firmware updates can damage or disable the device. See the README and MIT license.
 
-          Known limitation: turning the speaker's physical volume knob does not update the volume shown in macOS.
+          Run `./xf1-usb-volume` with no arguments for guided installation or official restore. Downloads, verification, patching, device selection and the administrator prompt are handled for you.
+
+          This release includes the tested knob synchronization fix: physical knob changes update the macOS volume slider, alongside USB volume control without playback skips.
           EOF
           gh release create "$RELEASE_TAG" release/*.tar.gz release/*.sha256 \
             --verify-tag --title "XF1 USB Volume $RELEASE_TAG" \

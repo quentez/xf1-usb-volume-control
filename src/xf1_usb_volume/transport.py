@@ -40,10 +40,22 @@ def list_speakers():
     rows = []
     for device in usb.core.find(find_all=True, idVendor=VID, idProduct=PID, backend=backend()):
         try:
-            rows.append({"serial": device.serial_number, "product": device.product or "Creative XF1"})
+            rows.append({"serial": read_serial(device), "product": "Creative XF1"})
         finally:
             usb.util.dispose_resources(device)
     return rows
+
+
+def read_serial(device):
+    try:
+        serial = device.serial_number
+    except (usb.core.USBError, ValueError) as error:
+        raise RuntimeError("Could not read the XF1 USB identity (language/serial descriptor). "
+                           "No firmware was sent. Reconnect USB or restart the speaker and try again. "
+                           f"Original error: {error}") from error
+    if not serial:
+        raise RuntimeError("The XF1 returned no serial number; no firmware was sent.")
+    return serial
 
 
 def find_speaker(serial):
@@ -51,7 +63,7 @@ def find_speaker(serial):
     try:
         for device in usb.core.find(find_all=True, idVendor=VID, idProduct=PID, backend=backend()):
             try:
-                if device.serial_number == serial:
+                if read_serial(device) == serial:
                     matching.append(device)
                 else:
                     usb.util.dispose_resources(device)

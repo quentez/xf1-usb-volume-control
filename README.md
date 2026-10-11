@@ -1,19 +1,204 @@
 # XF1 USB volume control
 
 Enable the macOS volume slider and keyboard volume keys for **Creative XF1
-(MF1730)** speakers connected over USB. The patch also defers amplifier updates
-so changing volume does not briefly interrupt playback. It adds no fade.
+(MF1730)** speakers over USB. Volume changes keep playback continuous, and
+turning the speaker's physical knob updates the volume shown in macOS.
 
-The patch has been flashed and tested on one XF1: native volume controls work,
-and the volume-change audio artifact is gone. Wider hardware testing is welcome.
-
-**Known limitation:** turning the speaker's physical volume knob does not update
-the volume shown in macOS. Synchronization of knob changes is under investigation.
+The current patch has been flashed and tested on one XF1. Wider hardware testing
+is welcome. No fade is added.
 
 **No Creative firmware, extracted code, or proprietary applications are included
-in this repository or its releases.** The tool downloads one explicitly supported
-official firmware from Creative, checks its SHA-256, and patches it locally.
-It preserves the official file for restoring the speaker.
+in this repository or its releases.** The tool downloads a known official file
+from Creative, verifies it, applies our patch locally, and preserves the official
+file for restore.
+
+## Quick start
+
+1. Connect your XF1 to power and your Mac with a USB **data** cable. Turn it on.
+2. Download and extract the release for your Mac, or install from source below.
+3. Open Terminal in the extracted folder and run:
+
+```sh
+./xf1-usb-volume
+```
+
+You will see:
+
+```text
+XF1 USB volume control 0.2.0
+
+  1. Enable USB volume and knob sync
+  2. Restore official firmware
+  q. Quit
+```
+
+Choose **1** to install the patch, or **2** to return to official firmware.
+The tool finds the speaker, downloads and verifies the firmware, prepares the
+patch when needed, and shows the exact speaker and version before writing.
+If multiple XF1s are connected, it asks which one to use.
+
+Stop playback, then type `FLASH` or `RESTORE` at the final prompt. The tool asks
+for your Mac login password through `sudo` when administrator access is needed;
+Terminal does not display characters while you type the password. You do not
+need to start the interactive tool with `sudo`.
+
+Keep power and USB connected throughout the transfer and reboot. The speaker
+normally disconnects briefly after the last chunk. Once it returns, select it
+in macOS Sound settings, start playback quietly, and test the keyboard volume
+keys, slider, and several physical knob changes.
+
+## Choose how to install
+
+USB operations support macOS only. Self-contained binaries require **macOS 15
+or later** and include Python and libusb. No Python, Homebrew, or separate library
+installation is needed for the release download.
+
+### Release download — easiest
+
+Open [Releases](https://github.com/quentez/xf1-usb-volume-control/releases/latest)
+and download the archive and matching `.sha256` file for your Mac:
+
+| Mac | Archive suffix |
+| --- | --- |
+| Apple Silicon (M-series) | `macos-arm64.tar.gz` |
+| Intel | `macos-x86_64.tar.gz` |
+
+In Terminal, change to your download folder. Verify and extract the archive,
+replacing `VERSION` and `ARCH` with the downloaded names:
+
+```sh
+shasum -a 256 -c xf1-usb-volume-vVERSION-macos-ARCH.tar.gz.sha256
+tar -xzf xf1-usb-volume-vVERSION-macos-ARCH.tar.gz
+cd xf1-usb-volume-vVERSION-macos-ARCH
+./xf1-usb-volume
+```
+
+Releases use ad-hoc code signing, not an Apple Developer ID or notarization.
+macOS may block the first launch. After verifying the download, use **System
+Settings → Privacy & Security → Open Anyway** if offered. Do not disable
+Gatekeeper globally. You can also build from source.
+
+### From source
+
+Install the prerequisites with [Homebrew](https://brew.sh), then clone and install:
+
+```sh
+brew install python libusb
+git clone https://github.com/quentez/xf1-usb-volume-control.git
+cd xf1-usb-volume-control
+python3 -m venv .venv
+.venv/bin/python -m pip install .
+.venv/bin/xf1-usb-volume
+```
+
+Python 3.11+ is required. Replace `./xf1-usb-volume` in subsequent examples with
+`.venv/bin/xf1-usb-volume`. Keep this explicit path when using `sudo` for advanced
+commands; the package does not need to be installed as root.
+
+## Official restore and supported firmware
+
+The interactive restore option checks Creative's release feed and downloads the
+latest official version **only if it is in this tool's reviewed allowlist**.
+If Creative publishes an unreviewed version, the tool stops and asks you to
+update the tool. It never flashes an unknown file or silently substitutes an
+older version as “latest.” A network connection is required for this check;
+the advanced `restore` command can use a preserved official file offline.
+
+Restore installs the listed official release. It does not recover whichever
+version was installed before you first used this tool; that previous image is
+not read or backed up. Restore needs a functioning USB update interface and
+cannot recover an unresponsive/bricked speaker.
+
+Only **Creative XF1 / MF1730**, USB VID/PID **041e:32b9**, is supported.
+
+| Item | Value |
+| --- | --- |
+| Supported official release | `1.1.260703.1630` |
+| Internal firmware version | `20D38E18` |
+| Patch revision | `usb-volume-v2` — USB volume, deferred gain updates, knob sync |
+| Official SHA-256 | `dc4c1e5fae2667eb08bf80713f55b9180b3f9dad40ec03e571e19bd1b0b111f0` |
+| Patched SHA-256 | `87e4a54b687b4e25136b7abcad590fdac09ff2f34caf9d7dcd69270e1364f16e` |
+
+Creative's [release feed](https://files.creative.com/creative/bin/firmware/fwureleases/MF1730/MF1730_release.json)
+listed this official version as latest when checked on 2026-10-11 UTC.
+Both input and output hashes are pinned. Container, section, region and
+bootstrap checksums are also validated. Download URLs are restricted to
+Creative's HTTPS host. These checks establish file identity and integrity,
+not compatibility with every hardware revision.
+
+## Saved files and logs
+
+By default, downloads and builds are kept under:
+
+```text
+~/Library/Application Support/xf1-usb-volume/firmware/1.1.260703.1630/
+```
+
+| File | Purpose |
+| --- | --- |
+| `MF1730_20D38E18.fot` | Untouched official firmware for restore |
+| `MF1730_20D38E18_usb-volume-v2.fot` | Exact tested patch with knob sync |
+| `patch-manifest-v2.json` | Build details and checksums |
+| `logs/` | A unique log for each flash or restore attempt |
+
+Firmware and build manifests are saved read-only. Identical files are reused;
+different files are never overwritten. Earlier v1 files and manifests are
+preserved when upgrading to v2.
+
+Every 512-byte transfer is checked. The tool stops on an uncertain transfer and
+never retries it automatically. A complete transfer still needs a successful
+reboot and playback check. Logs contain serial numbers and local paths; redact
+those before posting an issue. Do not upload firmware or extracted vendor code.
+
+## Advanced commands
+
+The explicit commands remain available for scripting and offline preparation.
+Run `./xf1-usb-volume --help` for all options.
+
+```sh
+./xf1-usb-volume doctor
+./xf1-usb-volume devices
+./xf1-usb-volume versions
+./xf1-usb-volume prepare --directory "$HOME/Downloads/xf1-firmware"
+./xf1-usb-volume verify "$HOME/Downloads/xf1-firmware/MF1730_20D38E18_usb-volume-v2.fot"
+```
+
+After preparation, replace `YOUR_SERIAL` with the value from `devices`:
+
+```sh
+sudo ./xf1-usb-volume flash \
+  "$HOME/Downloads/xf1-firmware/MF1730_20D38E18_usb-volume-v2.fot" \
+  --serial YOUR_SERIAL
+```
+
+To restore the preserved official file:
+
+```sh
+sudo ./xf1-usb-volume restore \
+  "$HOME/Downloads/xf1-firmware/MF1730_20D38E18.fot" \
+  --serial YOUR_SERIAL
+```
+
+`download` fetches only the supported official file. `prepare --input /path/to/file.fot`
+uses a local official copy instead of downloading. `sudo ./xf1-usb-volume probe
+--serial YOUR_SERIAL` tests the update transport with SCSI INQUIRY only; it sends
+no firmware commands, but temporarily releases the USB driver, so audio can disconnect.
+
+## Troubleshooting
+
+- **No device found:** check power and the USB data cable. Bluetooth pairing does
+  not provide the USB update connection.
+- **USB identity / language / serial error:** a control request failed before
+  flashing. Audio may still work. Reconnect USB or restart the speaker, then
+  run the tool again. The serial check is never bypassed.
+- **libusb unavailable:** source users should run `brew install libusb`. Release
+  users should re-extract the complete archive and run `doctor`.
+- **Unknown firmware / checksum failure:** use only the supported files. Move a
+  damaged cached file aside before downloading again; the tool will not overwrite it.
+- **Transfer stopped / uncertain write:** do not blindly repeat the flash. Keep
+  the log and establish whether the speaker reboots and reappears before retrying.
+- **Interactive setup needs a terminal:** launch the executable in Terminal.
+  Piped input cannot start interactive flashing; use explicit commands for scripting.
 
 ## Disclaimer
 
@@ -28,197 +213,12 @@ functionality, data loss, or any other damage arising from use of this project.
 The software is provided **“AS IS,” without warranty of any kind**. See the
 [MIT license](LICENSE).
 
-## Choose how to run it
-
-| Method | What you install |
-| --- | --- |
-| **Release download** — easiest | One executable; Python and libusb are bundled. No Python, Homebrew, or separate library installation needed. |
-| **From source** | Python 3.11+ and libusb; setup below. |
-
-USB operations support macOS only. Release binaries target **macOS 15 or later**,
-with separate Apple Silicon and Intel downloads. Downloading, patching, and
-verification never send firmware commands to the speaker.
-
-### Option A: download a release
-
-1. Open [Releases](https://github.com/quentez/xf1-usb-volume-control/releases).
-2. Download the archive for your Mac and its matching `.sha256` file:
-   - `xf1-usb-volume-v…-macos-arm64.tar.gz` for Apple Silicon (M-series).
-   - `xf1-usb-volume-v…-macos-x86_64.tar.gz` for Intel.
-3. In Terminal, change to the download folder. Verify and extract the archive,
-   replacing `VERSION` and `ARCH` with the downloaded names:
-
-```sh
-shasum -a 256 -c xf1-usb-volume-vVERSION-macos-ARCH.tar.gz.sha256
-tar -xzf xf1-usb-volume-vVERSION-macos-ARCH.tar.gz
-cd xf1-usb-volume-vVERSION-macos-ARCH
-./xf1-usb-volume doctor
-```
-
-The workflow creates releases when a `v…` tag is pushed. If none is published
-yet, use the source installation below.
-
-Releases currently use ad-hoc code signing, not an Apple Developer ID or
-notarization. macOS may block the first launch. After verifying the download,
-use **System Settings → Privacy & Security → Open Anyway** if offered. Do not
-disable Gatekeeper globally. Users who prefer can build from source instead.
-
-### Option B: run from source
-
-Install the prerequisites with [Homebrew](https://brew.sh), then clone and install:
-
-```sh
-brew install python libusb
-git clone https://github.com/quentez/xf1-usb-volume-control.git
-cd xf1-usb-volume-control
-python3 -m venv .venv
-.venv/bin/python -m pip install .
-.venv/bin/xf1-usb-volume doctor
-```
-
-In the commands below, replace `./xf1-usb-volume` with
-`.venv/bin/xf1-usb-volume` when running from source. Keep the explicit path when
-using `sudo`; you do not need to install the package as root.
-
-## Enable USB volume
-
-### 1. Connect and identify your speaker
-
-Connect power and a USB **data** cable, turn the speaker on, then run:
-
-```sh
-./xf1-usb-volume devices
-```
-
-Copy the serial number shown. Replace `YOUR_SERIAL` below with that value.
-Every write targets that exact serial, even if other USB devices are connected.
-
-### 2. Download and prepare the firmware
-
-Run this **without sudo**:
-
-```sh
-./xf1-usb-volume prepare --directory "$HOME/Downloads/xf1-firmware"
-```
-
-This saves three files:
-
-| File | Purpose |
-| --- | --- |
-| `MF1730_20D38E18.fot` | Unmodified official firmware for restore. Keep it. |
-| `MF1730_20D38E18_usb-volume-v1.fot` | Verified patch with native USB volume and deferred updates. |
-| `patch-manifest.json` | Checksums and build information. |
-
-Firmware files are saved read-only. Repeating preparation reuses identical
-copies; it refuses to overwrite a different file. Nothing has been flashed yet.
-
-### 3. Flash the patch
-
-Stop playback. Keep power and USB connected throughout the transfer and reboot.
-This command **writes firmware** and temporarily disconnects USB audio:
-
-```sh
-sudo ./xf1-usb-volume flash \
-  "$HOME/Downloads/xf1-firmware/MF1730_20D38E18_usb-volume-v1.fot" \
-  --serial YOUR_SERIAL
-```
-
-Administrator access is needed to temporarily release the macOS USB driver.
-Every 512-byte transfer is checked. The tool stops on an uncertain transfer and
-does not retry it automatically. It saves a unique log in `xf1-firmware/logs/`.
-
-The speaker normally disconnects and reboots after the last chunk. A message
-saying the USB disconnect is expected during reboot is normal. Wait for the
-speaker to return; acknowledged transfers alone do not prove successful boot.
-
-### 4. Check the result
-
-Select the XF1 in macOS Sound settings. The volume slider and keyboard volume
-keys should now work. Start playback quietly, try a few volume changes, and
-check that playback stays continuous. Check mute/unmute and your other usual
-inputs as well.
-
-## Restore official firmware
-
-This removes the patch, including the advertised native USB-volume capability.
-It restores the **supported official release**, not a backup of whichever
-firmware was installed before you started. The device's previous version is
-not read or backed up by this tool.
-
-Use the official file preserved during preparation:
-
-```sh
-sudo ./xf1-usb-volume restore \
-  "$HOME/Downloads/xf1-firmware/MF1730_20D38E18.fot" \
-  --serial YOUR_SERIAL
-```
-
-If you no longer have that file, download a fresh verified copy first, without sudo:
-
-```sh
-./xf1-usb-volume download --directory "$HOME/Downloads/xf1-firmware"
-```
-
-Restore requires the speaker to remain accessible through its USB update
-interface. This is not a recovery tool for an unresponsive/bricked device.
-
-## Supported firmware
-
-Only **Creative XF1 / MF1730**, USB VID/PID **041e:32b9**, is supported.
-
-| Item | Value |
-| --- | --- |
-| Official release | `1.1.260703.1630` |
-| Internal firmware version | `20D38E18` |
-| Official SHA-256 | `dc4c1e5fae2667eb08bf80713f55b9180b3f9dad40ec03e571e19bd1b0b111f0` |
-| Patched SHA-256 | `a2ff67f5553f7bbe28072ea478e6c15dedf4dff27c02bfef402560d64b261151` |
-
-There is no automatic “latest firmware” selection and no force option for
-unknown files. A new firmware version requires separate analysis and an
-explicit code update. Download URLs are restricted to Creative's HTTPS host.
-Both input and final output hashes are pinned, and the known container,
-section, region, and bootstrap checksums are validated.
-
-These checks establish file identity and integrity; they do not guarantee
-compatibility with every hardware revision or verify the currently installed
-firmware version. Do not use the tool on a different speaker model.
-
-## Other commands and troubleshooting
-
-```sh
-./xf1-usb-volume --help
-./xf1-usb-volume versions
-./xf1-usb-volume verify "$HOME/Downloads/xf1-firmware/MF1730_20D38E18_usb-volume-v1.fot"
-sudo ./xf1-usb-volume probe --serial YOUR_SERIAL
-```
-
-`probe` performs only a SCSI INQUIRY, with no firmware commands. It temporarily
-releases the USB driver, so audio can disconnect even during this probe.
-
-- **No device found:** check power and the USB data cable, then run `devices`
-  again. Bluetooth pairing does not provide the USB update connection.
-- **libusb unavailable:** source users should run `brew install libusb`.
-  Release users should re-extract the complete archive and run `doctor`.
-- **Unknown firmware / checksum failure:** do not flash it. Check the supported
-  version above. If an existing local file is damaged, move it aside and download
-  again; the tool deliberately refuses to overwrite it.
-- **Transfer stopped / uncertain write:** do not blindly repeat the flash.
-  Keep the log, check whether the speaker reboots and reappears, and establish
-  its state before another attempt.
-- **Already have the official file:** use `prepare --input /path/to/file.fot
-  --directory /path/to/output` to work offline. Unknown files are rejected.
-
-Logs include your device serial and local paths. Redact those before posting
-logs in a public issue. Do not upload firmware or extracted vendor code.
-
 ## Development and releases
 
-See [development and release instructions](docs/development.md). The GitHub
-Actions workflow builds and tests both macOS architectures, bundles Python and
-libusb, and attaches archives and SHA-256 files to a GitHub Release when a
-version tag is pushed. No firmware is included in those assets.
+See [development and release instructions](docs/development.md). GitHub Actions
+builds and tests both macOS architectures and publishes self-contained archives
+and SHA-256 files when a version tag is pushed. No firmware is included.
 
-The source code and our replacement patch are [MIT licensed](LICENSE).
-Bundled third-party software retains its own licenses; see
-[third-party notices](THIRD_PARTY.md). Creative retains its rights to its
-firmware and trademarks.
+The tool and our authored patches are [MIT licensed](LICENSE). Bundled third-party
+software retains its own licenses; see [third-party notices](THIRD_PARTY.md).
+Creative retains its rights to its firmware and trademarks.

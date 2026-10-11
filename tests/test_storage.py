@@ -1,4 +1,5 @@
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -61,3 +62,39 @@ class StorageTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 storage.prepare(output, source=source)
             self.assertFalse(output.exists())
+
+    def test_latest_feed_only_accepts_reviewed_release(self):
+        for metadata, accepted in (({"latestVersion": RELEASE.version}, True),
+                                   ({"latestVersion": "9.9.999999.9999"}, False),
+                                   ({}, False), ([], False), ({"latestVersion": 123}, False)):
+            response = Mock()
+            response.__enter__ = Mock(return_value=response)
+            response.__exit__ = Mock(return_value=False)
+            response.status = 200
+            response.geturl.return_value = storage.LATEST_URL
+            response.read.return_value = json.dumps(metadata).encode()
+            opener = Mock()
+            opener.open.return_value = response
+            with self.subTest(metadata=metadata), patch.object(storage, "build_opener", return_value=opener):
+                if accepted:
+                    self.assertEqual(storage.latest_official_release(), RELEASE)
+                else:
+                    with self.assertRaises(ValueError):
+                        storage.latest_official_release()
+
+    def test_new_patch_preserves_previous_manifest_and_firmware(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            old = root / "patch-manifest.json"
+            old.write_bytes(b"previous build record")
+            old_image = root / "MF1730_20D38E18_usb-volume-v1.fot"
+            old_image.write_bytes(b"previous working image")
+            official = root / RELEASE.filename
+            official.write_bytes(b"official fixture")
+            with patch.object(storage, "download", return_value=official), \
+                 patch.object(storage, "patch_volume", return_value=b"new patch"):
+                _, patched = storage.prepare(root)
+            self.assertEqual(patched.read_bytes(), b"new patch")
+            self.assertEqual(old.read_bytes(), b"previous build record")
+            self.assertEqual(old_image.read_bytes(), b"previous working image")
+            self.assertTrue((root / "patch-manifest-v2.json").is_file())

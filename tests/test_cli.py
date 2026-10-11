@@ -28,7 +28,7 @@ class CLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             image = Path(directory) / "image.fot"
             image.write_bytes(b"synthetic")
-            with patch.object(cli, "identify", return_value={"kind": "usb-volume-v1"}), \
+            with patch.object(cli, "identify", return_value={"kind": "usb-volume-v2"}), \
                  patch.object(transport, "find_speaker") as find, patch("sys.stderr", io.StringIO()):
                 self.assertEqual(cli.main(["restore", str(image), "--serial", "TEST"]), 1)
                 find.assert_not_called()

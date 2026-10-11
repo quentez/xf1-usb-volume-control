@@ -5,6 +5,7 @@ import struct
 
 from .format import crc16, crypt, decode_section, section, resource_entries
 from .catalog import RELEASE
+from . import feedback
 
 CODE_KEY = 0xBA3E1ABE
 LVMG = 0x474D564C
@@ -171,7 +172,7 @@ def identify(data):
     if digest == RELEASE.stock_sha256:
         kind, checksum = "official", RELEASE.stock_crc32
     elif digest == RELEASE.patched_sha256:
-        kind, checksum = "usb-volume-v1", RELEASE.patched_crc32
+        kind, checksum = "usb-volume-v2", RELEASE.patched_crc32
     else:
         raise ValueError("Unknown firmware SHA-256; only the reviewed official and patched images are accepted")
     report = validate(data, checksum)["report"]
@@ -190,6 +191,7 @@ def patch_volume(stock):
     require(len(DEFERRED_USB_CALLBACK) == 50, "Replacement callback size changed")
     app[VOLUME_OFFSET] = 3
     app[USB_CALLBACK_OFFSET:USB_CALLBACK_OFFSET+50] = DEFERRED_USB_CALLBACK
+    app = feedback.apply(app)
     patched = rebuild(stock, original, app)
     # Pin the complete result to the exact image physically tested on an XF1.
     require(sha256(patched) == RELEASE.patched_sha256, "Patched firmware does not match the reviewed output")

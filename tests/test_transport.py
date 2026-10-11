@@ -5,7 +5,7 @@ from pathlib import Path
 import struct
 import sys
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from xf1_usb_volume import transport as flash
 
@@ -30,6 +30,40 @@ class FakeDevice:
         if size == 36:
             return bytes(8) + b"Generic " + b"Masstorage      " + b"1.00"
         return struct.pack("<IIIB", 0x53425355, self.tag+self.tag_delta, self.residue, self.status)
+
+
+class DiscoveryTests(unittest.TestCase):
+    def test_identity_failure_stops_without_retry_or_bypass(self):
+        first, broken = Mock(serial_number="target"), Mock()
+        failure = PropertyMock(side_effect=ValueError("The device has no langid"))
+        type(broken).serial_number = failure
+        with patch.object(flash, "backend"), \
+             patch.object(flash.usb.core, "find", return_value=[first, broken]), \
+             patch.object(flash.usb.util, "dispose_resources") as dispose:
+            with self.assertRaisesRegex(RuntimeError, "No firmware was sent"):
+                flash.find_speaker("target")
+        failure.assert_called_once_with()
+        self.assertCountEqual([call.args[0] for call in dispose.call_args_list], [first, broken])
+        for device in (first, broken):
+            device.write.assert_not_called()
+            device.detach_kernel_driver.assert_not_called()
+
+    def test_exact_serial_keeps_only_selected_handle(self):
+        other, selected = Mock(serial_number="other"), Mock(serial_number="target")
+        with patch.object(flash, "backend"), \
+             patch.object(flash.usb.core, "find", return_value=[other, selected]), \
+             patch.object(flash.usb.util, "dispose_resources") as dispose:
+            self.assertIs(flash.find_speaker("target"), selected)
+        dispose.assert_called_once_with(other)
+
+    def test_duplicate_serial_refuses_and_closes_every_handle(self):
+        devices = [Mock(serial_number="target"), Mock(serial_number="target")]
+        with patch.object(flash, "backend"), \
+             patch.object(flash.usb.core, "find", return_value=devices), \
+             patch.object(flash.usb.util, "dispose_resources") as dispose:
+            with self.assertRaisesRegex(RuntimeError, "found 2"):
+                flash.find_speaker("target")
+        self.assertEqual([call.args[0] for call in dispose.call_args_list], devices)
 
 
 class TransportTests(unittest.TestCase):

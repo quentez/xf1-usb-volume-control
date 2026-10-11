@@ -20,13 +20,13 @@ RELEASE = FirmwareRelease(
     version="1.1.260703.1630",
     internal_version="20D38E18",
     filename="MF1730_20D38E18.fot",
-    patched_filename="MF1730_20D38E18_usb-volume-v1.fot",
+    patched_filename="MF1730_20D38E18_usb-volume-v2.fot",
     url="https://files.creative.com/creative/bin/firmware/fwureleases/MF1730/zifs/fc00/MF1730_20D38E18.fot",
     size=979968,
     stock_sha256="dc4c1e5fae2667eb08bf80713f55b9180b3f9dad40ec03e571e19bd1b0b111f0",
-    patched_sha256="a2ff67f5553f7bbe28072ea478e6c15dedf4dff27c02bfef402560d64b261151",
+    patched_sha256="87e4a54b687b4e25136b7abcad590fdac09ff2f34caf9d7dcd69270e1364f16e",
     stock_crc32="CF4D0F18",
-    patched_crc32="6F4D88A5",
+    patched_crc32="8DE1D8C4",
 )
 
 

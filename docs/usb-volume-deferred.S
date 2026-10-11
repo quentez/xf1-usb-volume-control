@@ -2,7 +2,7 @@
 # Preserve the USB echo-suppression flag, last-level cache and global level.
 # Tail-call the same event-post entry used by Bluetooth with event 0x7f2.
 # tp is initialized to 0x84800 by the existing application entry point.
-# This is an experimental scheduling change, with no gain ramp.
+# This scheduling change is physically tested, with no gain ramp.
 # Assemble with upstream Clang built with RISC-V support (not Apple's Clang):
 # clang -target riscv32-unknown-elf -march=rv32imc -mabi=ilp32 \
 #   -c docs/usb-volume-deferred.S -o /tmp/xf1-usb-volume-deferred.o

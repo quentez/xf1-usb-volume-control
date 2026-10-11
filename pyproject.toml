@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xf1-usb-volume"
-version = "0.1.0"
+version = "0.2.0"
 description = "Enable native USB volume on the Creative XF1 from macOS"
 readme = "README.md"
 requires-python = ">=3.11"

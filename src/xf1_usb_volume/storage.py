@@ -11,6 +11,30 @@ import certifi
 
 from .catalog import RELEASE, get_release
 from .firmware import identify, patch_volume, sha256
+from . import __version__
+
+LATEST_URL = "https://files.creative.com/creative/bin/firmware/fwureleases/MF1730/MF1730_release.json"
+
+
+def latest_official_release():
+    """Check freshness without trusting a feed to authorize unknown firmware."""
+    opener = build_opener(OfficialRedirects(), HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())))
+    request = Request(LATEST_URL, headers={"User-Agent": f"xf1-usb-volume/{__version__}"})
+    with opener.open(request, timeout=30) as response:
+        check_url(response.geturl())
+        if response.status != 200:
+            raise ValueError(f"Firmware release feed returned HTTP {response.status}")
+        data = response.read(65537)
+    if len(data) > 65536:
+        raise ValueError("Unexpectedly large firmware release feed")
+    metadata = json.loads(data)
+    version = metadata.get("latestVersion") if isinstance(metadata, dict) else None
+    if not isinstance(version, str) or not version:
+        raise ValueError("Firmware release feed has no valid latestVersion")
+    if version != RELEASE.version:
+        raise ValueError(f"Creative lists official firmware {version}, which this tool has not reviewed. "
+                         "Update this tool before restoring the latest release. No firmware was sent.")
+    return get_release(version)
 
 
 def default_directory():
@@ -33,7 +57,7 @@ class OfficialRedirects(HTTPRedirectHandler):
 def fetch_official(release):
     check_url(release.url)
     opener = build_opener(OfficialRedirects(), HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())))
-    request = Request(release.url, headers={"User-Agent": "xf1-usb-volume/0.1", "Accept-Encoding": "identity"})
+    request = Request(release.url, headers={"User-Agent": f"xf1-usb-volume/{__version__}", "Accept-Encoding": "identity"})
     with opener.open(request, timeout=30) as response:
         check_url(response.geturl())
         if response.status != 200:
@@ -99,11 +123,11 @@ def prepare(directory=None, version=RELEASE.version, source=None):
     destination = save_copy(directory / release.patched_filename, patched)
     manifest = {
         "firmware_version": release.version,
-        "patch": "USB master volume with deferred amplifier update; no fade",
+        "patch": "USB master volume, deferred amplifier update and physical knob synchronization; no fade",
         "official_file": official.name, "official_sha256": release.stock_sha256,
         "patched_file": destination.name, "patched_sha256": release.patched_sha256,
         "flashed": False,
         "note": "Build record only; successful transfer and playback must be verified separately",
     }
-    save_copy(directory / "patch-manifest.json", (json.dumps(manifest, indent=2) + "\n").encode())
+    save_copy(directory / "patch-manifest-v2.json", (json.dumps(manifest, indent=2) + "\n").encode())
     return official, destination
