@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77,<85"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xf1-usb-volume"
+version = "0.1.0"
+description = "Enable native USB volume on the Creative XF1 from macOS"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["pyusb==1.3.1", "certifi>=2025.1.31"]
+classifiers = [
+  "Operating System :: MacOS :: MacOS X",
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+]
+
+[project.scripts]
+xf1-usb-volume = "xf1_usb_volume.cli:main"
+
+[project.urls]
+Repository = "https://github.com/quentez/xf1-usb-volume-control"
+Issues = "https://github.com/quentez/xf1-usb-volume-control/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

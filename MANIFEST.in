@@ -1,0 +1,3 @@
+include LICENSE README.md THIRD_PARTY.md
+recursive-include docs *.md *.S
+global-exclude *.fot *.bin *.exe *.dll *.dylib *.so *.apk *.jsonl

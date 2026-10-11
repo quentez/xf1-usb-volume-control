@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+release/
+*.spec
+.DS_Store
+.coverage
+.pytest_cache/
+# Firmware, vendor binaries, extraction results, and device logs stay local.
+*.fot
+*.bin
+*.exe
+*.dll
+*.dylib
+*.so
+*.apk
+*.jsonl
+firmware/
+downloads/
+recovery/
+logs/

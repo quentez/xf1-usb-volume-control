@@ -1,0 +1,91 @@
+name: macOS release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          architecture: ${{ matrix.arch }}
+      - run: brew install libusb
+      - run: python -m pip install . -r requirements-build.txt
+      - run: python scripts/audit_source.py
+      - name: Verify official download and exact patched output
+        env:
+          XF1_TEST_FIRMWARE: ${{ runner.temp }}/xf1-firmware/MF1730_20D38E18.fot
+        run: |
+          xf1-usb-volume prepare --directory "$RUNNER_TEMP/xf1-firmware"
+          python -m unittest discover -s tests -v
+      - name: Build self-contained executable
+        env:
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$RELEASE_REF_TYPE" = tag ]; then
+            python scripts/build_macos.py --tag "$RELEASE_REF_NAME"
+          else
+            python scripts/build_macos.py
+          fi
+      - name: Test the packaged executable
+        run: |
+          mkdir "$RUNNER_TEMP/extracted"
+          tar -xzf release/*.tar.gz -C "$RUNNER_TEMP/extracted"
+          binary=$(find "$RUNNER_TEMP/extracted" -type f -name xf1-usb-volume)
+          "$binary" doctor
+          "$binary" prepare --input "$RUNNER_TEMP/xf1-firmware/MF1730_20D38E18.fot" --directory "$RUNNER_TEMP/binary-output"
+          "$binary" verify "$RUNNER_TEMP/binary-output/MF1730_20D38E18_usb-volume-v1.fot"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            release/*.tar.gz
+            release/*.sha256
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: macos-*
+          merge-multiple: true
+          path: release
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          Self-contained macOS CLI downloads: choose **arm64** for Apple Silicon or **x86_64** for Intel. Requires macOS 15 or later. Python and libusb are included; no separate dependencies to install.
+
+          Verify the matching SHA-256 file, extract the archive, then follow the included README. The executables are ad-hoc signed, not Apple-notarized. Source code is available below and in the repository.
+
+          No Creative firmware is included. The tool downloads and patches only the reviewed official release. Use at your own risk; firmware updates can damage or disable the device. See the README and MIT license.
+          EOF
+          gh release create "$RELEASE_TAG" release/*.tar.gz release/*.sha256 \
+            --verify-tag --title "XF1 USB Volume $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
