@@ -84,6 +84,7 @@ def main():
     shutil.copy2(executable, staging / "xf1-usb-volume")
     for name in ("README.md", "LICENSE", "THIRD_PARTY.md"):
         shutil.copy2(ROOT / name, staging / name)
+    shutil.copytree(ROOT / "docs", staging / "docs")
     licenses = staging / "licenses"
     licenses.mkdir()
     shutil.copy2(prefix / "COPYING", licenses / "libusb-LICENSE.txt")
