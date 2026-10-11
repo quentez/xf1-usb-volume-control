@@ -87,6 +87,8 @@ jobs:
           Verify the matching SHA-256 file, extract the archive, then follow the included README. The executables are ad-hoc signed, not Apple-notarized. Source code is available below and in the repository.
 
           No Creative firmware is included. The tool downloads and patches only the reviewed official release. Use at your own risk; firmware updates can damage or disable the device. See the README and MIT license.
+
+          Known limitation: turning the speaker's physical volume knob does not update the volume shown in macOS.
           EOF
           gh release create "$RELEASE_TAG" release/*.tar.gz release/*.sha256 \
             --verify-tag --title "XF1 USB Volume $RELEASE_TAG" \

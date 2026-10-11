@@ -7,6 +7,9 @@ so changing volume does not briefly interrupt playback. It adds no fade.
 The patch has been flashed and tested on one XF1: native volume controls work,
 and the volume-change audio artifact is gone. Wider hardware testing is welcome.
 
+**Known limitation:** turning the speaker's physical volume knob does not update
+the volume shown in macOS. Synchronization of knob changes is under investigation.
+
 **No Creative firmware, extracted code, or proprietary applications are included
 in this repository or its releases.** The tool downloads one explicitly supported
 official firmware from Creative, checks its SHA-256, and patches it locally.
