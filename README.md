@@ -126,6 +126,12 @@ bootstrap checksums are also validated. Download URLs are restricted to
 Creative's HTTPS host. These checks establish file identity and integrity,
 not compatibility with every hardware revision.
 
+The [firmware monitor](https://github.com/quentez/xf1-usb-volume-control/actions/workflows/firmware-check.yml)
+checks Creative's feed every three days and opens one issue per newer version,
+mentioning @quentez. It remembers closed reports too. New firmware still needs
+manual review before this tool can patch or restore it. Maintainers can also
+choose **Run workflow** for an immediate check.
+
 ## Saved files and logs
 
 By default, downloads and builds are kept under:

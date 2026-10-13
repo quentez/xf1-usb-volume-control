@@ -74,6 +74,37 @@ artifacts without publishing a release. Running it against a version tag also
 publishes. The tag and both source versions must match; an existing release is
 not silently overwritten.
 
+## Firmware monitoring
+
+The **Check official firmware** workflow checks Creative's XF1 release feed every
+three UTC days, starting 2026-10-12, around 09:23 UTC. GitHub wakes the workflow
+daily; `scripts/check_firmware.py` skips the feed check on intervening days.
+This keeps the interval across month boundaries, unlike a `*/3` day-of-month
+cron expression. GitHub may delay scheduled runs.
+
+Use **Actions → Check official firmware → Run workflow** to check immediately,
+regardless of the schedule. To preview locally without creating an issue:
+
+```sh
+.venv/bin/python scripts/check_firmware.py \
+  --repository quentez/xf1-usb-volume-control --notify quentez --dry-run
+```
+
+The script uses the installed package and GitHub CLI (`gh`, authenticated when
+it needs to read issues). A newer numeric version opens an issue mentioning
+@quentez, with links to the official feed and version metadata. All pages of
+open and closed issues are checked for an existing report, and workflow runs
+are serialized to avoid duplicates. A failed feed or issue lookup fails the
+workflow rather than reporting a false update.
+
+Only the monitor has `issues: write`; no extra secret is needed. It downloads
+only release metadata and does not change the firmware catalog. The workflow
+is restricted to this repository so forks do not send accidental notifications;
+adjust its repository condition and `--notify` username to use it in a fork.
+
+GitHub [disables scheduled workflows after 60 days of repository inactivity](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+in public repositories. If that happens, re-enable this workflow in Actions.
+
 ## Patch scope
 
 This tool supports one firmware layout and two exact whole-file hashes:

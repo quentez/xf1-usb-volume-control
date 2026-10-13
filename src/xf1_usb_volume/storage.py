@@ -16,8 +16,8 @@ from . import __version__
 LATEST_URL = "https://files.creative.com/creative/bin/firmware/fwureleases/MF1730/MF1730_release.json"
 
 
-def latest_official_release():
-    """Check freshness without trusting a feed to authorize unknown firmware."""
+def latest_official_version():
+    """Read the official release feed without authorizing any firmware."""
     opener = build_opener(OfficialRedirects(), HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())))
     request = Request(LATEST_URL, headers={"User-Agent": f"xf1-usb-volume/{__version__}"})
     with opener.open(request, timeout=30) as response:
@@ -31,6 +31,12 @@ def latest_official_release():
     version = metadata.get("latestVersion") if isinstance(metadata, dict) else None
     if not isinstance(version, str) or not version:
         raise ValueError("Firmware release feed has no valid latestVersion")
+    return version
+
+
+def latest_official_release():
+    """Check freshness without trusting a feed to authorize unknown firmware."""
+    version = latest_official_version()
     if version != RELEASE.version:
         raise ValueError(f"Creative lists official firmware {version}, which this tool has not reviewed. "
                          "Update this tool before restoring the latest release. No firmware was sent.")

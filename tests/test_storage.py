@@ -82,6 +82,20 @@ class StorageTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         storage.latest_official_release()
 
+    def test_monitor_can_read_unreviewed_version_without_authorizing_it(self):
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.status = 200
+        response.geturl.return_value = storage.LATEST_URL
+        response.read.return_value = b'{"latestVersion": "9.9.999999.9999"}'
+        opener = Mock()
+        opener.open.return_value = response
+        with patch.object(storage, "build_opener", return_value=opener):
+            self.assertEqual(storage.latest_official_version(), "9.9.999999.9999")
+            with self.assertRaisesRegex(ValueError, "not reviewed"):
+                storage.latest_official_release()
+
     def test_new_patch_preserves_previous_manifest_and_firmware(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
